@@ -35,6 +35,16 @@ namespace NCB::NModelEvaluation {
         size_t docCountInBlock,
         bool calcIndexesOnly = false);
 
+#ifdef _x86_64_
+    // Implemented in evaluator_impl_avx512.cpp. Returns an empty function for
+    // the model shapes it does not cover, and must only be called after
+    // HaveAvx512Evaluator() returned true.
+    TTreeCalcFunction GetCalcTreesFunctionAvx512(
+        const TModelTrees& trees,
+        size_t docCountInBlock,
+        bool calcIndexesOnly);
+#endif
+
     template <class X>
     inline X* GetAligned(X* val) {
         uintptr_t off = ((uintptr_t)val) & 0xf;
@@ -148,7 +158,8 @@ namespace NCB::NModelEvaluation {
                 transposedHash,
                 ctrs,
                 estimatedFeatures,
-                featureInfo
+                featureInfo,
+                blockSize
             );
             callback(docCountInBlock, &quantizedData);
         }

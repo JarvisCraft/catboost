@@ -16,7 +16,7 @@ The first place to look at is probably `catboost/libs/model/cpu/evaluator_impl.c
 
 There is a student paper on using AVX-512 for CatBoost. The paper is available as `./avx512-results/paper.pdf` (written on Russian). It also contains useful information on benchmarking. For your own good it may be worth reading it and summarizing the essential details.
 
-This implementation is available at `~/Projects/catboost-cpu-evaluation-optimization` which is an old checkout of the current repository plus the single latest commit implementing AVX-512 optimization. It may be used as reference, but the code there may not be up-to-date and there may be bugs in it, so it may be worth reimplementing the optimization only looking at this project as reference.
+This implementation is available at `../catboost-cpu-evaluation-optimization` which is an old checkout of the current repository plus the single latest commit implementing AVX-512 optimization. It may be used as reference, but the code there may not be up-to-date and there may be bugs in it, so it may be worth reimplementing the optimization only looking at this project as reference.
 
 # Recommendations
 
@@ -24,3 +24,4 @@ This implementation is available at `~/Projects/catboost-cpu-evaluation-optimiza
 - Prefer using subagents for atomic subtasks.
 - Record important observations and benchmark results in markdown docs in `./avx512-results/`.
 - Run benchmarks in separate processes (using `zellij`) so that the dialog is not blocked while they are running.
+- Use `nix build` to build the project.

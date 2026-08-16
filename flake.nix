@@ -127,13 +127,29 @@
             __structuredAttrs = true;
             strictDeps = true;
             inputsFrom = [ catboostmodel ];
-            shellHook = config.pre-commit.installationScript;
+            shellHook = ''
+              ${config.pre-commit.installationScript}
+              # Lets avx512-results/kernel_check run the AVX-512 kernels on a
+              # host without AVX-512; its script picks this up.
+              export SIMDE_INCLUDE="${pkgs.simde}/include"
+            '';
             packages = with pkgs; [
               pkg-config
               gdb
               valgrind
               clang
               clang-tools
+              simde
+            ];
+          };
+          # Training the benchmark models needs a released catboost, which the
+          # build above deliberately does not provide.
+          devShells.benchmark = pkgs.mkShell {
+            packages = [
+              (pkgs.python3.withPackages (ps: [
+                ps.catboost
+                ps.numpy
+              ]))
             ];
           };
           pre-commit.settings = {
