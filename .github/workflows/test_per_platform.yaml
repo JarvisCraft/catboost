@@ -33,14 +33,14 @@ jobs:
     runs-on: ${{ inputs.runs-on_value }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: catboost
 
       # TODO: running python package tests for all supported python versions
 
       - name: Setup Python 3.12 for running tests
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
 
@@ -61,7 +61,7 @@ jobs:
       # TODO: maybe test on other Java versions as well
 
       - name: Setup JDK 11 for running tests
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
           distribution: 'temurin'
           java-version: '11'
@@ -80,7 +80,7 @@ jobs:
           sudo apt-get install -y libuv1-dev
 
       - name: Setup R
-        uses: r-lib/actions/setup-r@v2
+        uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         with:
           r-version: 'release'
 
@@ -99,7 +99,7 @@ jobs:
 
       - if: inputs.os != 'macos'
         name: Download CLI
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost-cli-${{ inputs.os }}-${{ inputs.machine }}-${{ inputs.artifacts_version }}
           path: build_native_root/catboost/app/
@@ -109,7 +109,7 @@ jobs:
 
       - if: inputs.os == 'macos'
         name: Download CLI
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost-cli-darwin-universal2-${{ inputs.artifacts_version }}
           path: build_native_root/catboost/app/
@@ -119,7 +119,7 @@ jobs:
 
       - if: inputs.os == 'linux'
         name: Download python package for Ubuntu
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost-python-package-dist-cp312-cp312-manylinux2014_${{ inputs.machine }}-${{ inputs.artifacts_version }}
           path: catboost_python_package_dist/
@@ -129,7 +129,7 @@ jobs:
 
       - if: inputs.os == 'macos'
         name: Download python package for macOS
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost-python-package-dist-cp312-cp312-macosx_11_0_universal2-${{ inputs.artifacts_version }}
           path: catboost_python_package_dist/
@@ -139,7 +139,7 @@ jobs:
 
       - if: inputs.os == 'windows'
         name: Download python package for Windows
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost-python-package-dist-cp312-cp312-win_amd64-${{ inputs.artifacts_version }}
           path: catboost_python_package_dist/
@@ -149,7 +149,7 @@ jobs:
 
       - if: inputs.os != 'macos'
         name: Download test tools
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost-test-tools-${{ inputs.os }}-${{ inputs.machine }}-${{ inputs.artifacts_version }}
           path: build_native_root/
@@ -159,7 +159,7 @@ jobs:
 
       - if: inputs.os == 'macos'
         name: Download test tools
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost-test-tools-darwin-universal2-${{ inputs.artifacts_version }}
           path: build_native_root/
@@ -169,7 +169,7 @@ jobs:
 
       - if: inputs.os != 'macos'
         name: Download catboost4j-prediction_resources
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost4j-prediction_resources-${{ inputs.os }}-${{ inputs.machine }}-${{ inputs.artifacts_version }}
           path: prebuilt/catboost4j-prediction_resources/
@@ -179,7 +179,7 @@ jobs:
 
       - if: inputs.os == 'macos'
         name: Download catboost4j-prediction_resources
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost4j-prediction_resources-darwin-universal2-${{ inputs.artifacts_version }}
           path: prebuilt/catboost4j-prediction_resources/
@@ -189,7 +189,7 @@ jobs:
 
       - if: inputs.os != 'windows'
         name: Download catboost4j-spark-impl-sources
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost4j-spark-impl-sources-${{ inputs.artifacts_version }}
           path: prebuilt/spark/
@@ -199,7 +199,7 @@ jobs:
 
       - if: inputs.os != 'windows'
         name: Download catboost4j-spark_core_resources_classes
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost4j-spark_core_resources_classes-${{ inputs.artifacts_version }}
           path: prebuilt/spark/catboost4j-spark_core_resources/
@@ -209,7 +209,7 @@ jobs:
 
       - if: inputs.os == 'linux'
         name: Download catboost4j-spark_core_resources for Ubuntu
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost4j-spark_core_resources-linux-${{ inputs.machine }}-${{ inputs.artifacts_version }}
           path: prebuilt/spark/catboost4j-spark_core_resources/
@@ -219,7 +219,7 @@ jobs:
 
       - if: inputs.os == 'macos'
         name: Download catboost4j-spark_core_resources for macOS
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost4j-spark_core_resources-darwin-universal2-${{ inputs.artifacts_version }}
           path: prebuilt/spark/catboost4j-spark_core_resources/
@@ -229,7 +229,7 @@ jobs:
 
       - if: inputs.os != 'macos'
         name: Download R package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost-R-package-${{ inputs.os }}-${{ inputs.machine }}-${{ inputs.artifacts_version }}
           path: catboost_R_package
@@ -239,7 +239,7 @@ jobs:
 
       - if: inputs.os == 'macos'
         name: Download R package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: catboost-R-package-darwin-universal2-${{ inputs.artifacts_version }}
           path: catboost_R_package

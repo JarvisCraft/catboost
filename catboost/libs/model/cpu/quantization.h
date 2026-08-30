@@ -1,5 +1,7 @@
 #pragma once
 
+#include "avx512_dispatch.h"
+
 #include <catboost/libs/model/model.h>
 
 #include <catboost/libs/helpers/exception.h>
@@ -12,8 +14,24 @@
 #include <util/generic/hash.h>
 #include <util/generic/ymath.h>
 
+#include <type_traits>
+
 namespace NCB::NModelEvaluation {
     constexpr size_t FORMULA_EVALUATION_BLOCK_SIZE = 128;
+
+    // A float feature accessor that can hand out a whole `[start, start + docCount)`
+    // range of one feature at once, instead of answering one document at a time.
+    // Only the transposed input layout can: there a feature's documents are
+    // already consecutive in memory. Accessors say so by providing
+    // `GetContiguousData(position, start)`.
+    template <class TAccessor, class = void>
+    struct TIsContiguousFloatAccessor: std::false_type {};
+
+    template <class TAccessor>
+    struct TIsContiguousFloatAccessor<
+        TAccessor,
+        std::void_t<decltype(std::declval<const TAccessor&>().GetContiguousData(TFeaturePosition(), size_t(0)))>
+    >: std::true_type {};
 
     class TCPUEvaluatorQuantizedData final : public IQuantizedData {
     public:
@@ -140,6 +158,46 @@ namespace NCB::NModelEvaluation {
         result += docCount * ((borders.size() + MAX_VALUES_PER_BIN - 1) / MAX_VALUES_PER_BIN);
     }
 
+    // Hands the feature to the AVX-512 binarizer when both the CPU and the input
+    // layout allow it, and reports whether it did.
+    template <bool UseNanSubstitution, typename TFloatFeatureAccessor>
+    Y_FORCE_INLINE bool TryBinarizeFloatsAvx512(
+        TFeaturePosition position,
+        const size_t docCount,
+        const TFloatFeatureAccessor& floatAccessor,
+        const TConstArrayRef<float> borders,
+        size_t start,
+        ui8*& result,
+        const float nanSubstitutionValue
+    ) {
+        // BinarizeFloatsAvx512 only exists where evaluator_impl_avx512.cpp is
+        // built, which is the 64-bit x86 platform files.
+#ifdef _x86_64_
+        if constexpr (TIsContiguousFloatAccessor<TFloatFeatureAccessor>::value) {
+            if (HaveAvx512Evaluator()) {
+                BinarizeFloatsAvx512(
+                    docCount,
+                    floatAccessor.GetContiguousData(position, start),
+                    borders,
+                    result,
+                    UseNanSubstitution,
+                    nanSubstitutionValue
+                );
+                return true;
+            }
+        }
+#else
+        Y_UNUSED(position);
+        Y_UNUSED(docCount);
+        Y_UNUSED(floatAccessor);
+        Y_UNUSED(borders);
+        Y_UNUSED(start);
+        Y_UNUSED(result);
+        Y_UNUSED(nanSubstitutionValue);
+#endif
+        return false;
+    }
+
 #ifndef ARCADIA_SSE
 
     template <bool UseNanSubstitution, typename TFloatFeatureAccessor>
@@ -152,6 +210,11 @@ namespace NCB::NModelEvaluation {
         ui8*& result,
         const float nanSubstitutionValue = 0.0f
     ) {
+        if (TryBinarizeFloatsAvx512<UseNanSubstitution>(
+                position, docCount, floatAccessor, borders, start, result, nanSubstitutionValue))
+        {
+            return;
+        }
         BinarizeFloatsNonSse<UseNanSubstitution, TFloatFeatureAccessor>(
             position,
             docCount,
@@ -175,6 +238,11 @@ namespace NCB::NModelEvaluation {
         ui8*& result,
         const float nanSubstitutionValue = 0.0f
     ) {
+        if (TryBinarizeFloatsAvx512<UseNanSubstitution>(
+                position, docCount, floatAccessor, borders, start, result, nanSubstitutionValue))
+        {
+            return;
+        }
         const __m128 substitutionValVec = _mm_set1_ps(nanSubstitutionValue);
         const auto docCount16 = (docCount | 0xf) ^ 0xf;
         for (size_t docId = 0; docId < docCount16; docId += 16) {
@@ -348,7 +416,8 @@ namespace NCB::NModelEvaluation {
         TArrayRef<ui32> transposedHash,
         TArrayRef<float> ctrs,
         TArrayRef<float> estimatedFeatures,
-        const TFeatureLayout* featureInfo = nullptr
+        const TFeatureLayout* featureInfo = nullptr,
+        size_t blockSize = FORMULA_EVALUATION_BLOCK_SIZE
     ) {
         const auto fullDocCount = end - start;
         auto result = *(cpuEvaluatorQuantizedData->QuantizedData);
@@ -356,14 +425,14 @@ namespace NCB::NModelEvaluation {
         CB_ENSURE(result.size() >= expectedQuantizedFeaturesLen, "Not enough space to store quantized features");
         cpuEvaluatorQuantizedData->BlocksCount = 0;
         cpuEvaluatorQuantizedData->BlockStride =
-            trees.GetEffectiveBinaryFeaturesBucketsCount() * FORMULA_EVALUATION_BLOCK_SIZE;
+            trees.GetEffectiveBinaryFeaturesBucketsCount() * blockSize;
         cpuEvaluatorQuantizedData->ObjectsCount = fullDocCount;
         ui8* resultPtr = result.data();
         std::fill(result.begin(), result.begin() + expectedQuantizedFeaturesLen, 0);
-        for (; start < end; start += FORMULA_EVALUATION_BLOCK_SIZE) {
+        for (; start < end; start += blockSize) {
             ui8* resultPtrForBlockStart = resultPtr;
             ++cpuEvaluatorQuantizedData->BlocksCount;
-            auto docCount = Min(end - start, FORMULA_EVALUATION_BLOCK_SIZE);
+            auto docCount = Min(end - start, blockSize);
             for (const auto& floatFeature : trees.GetFloatFeatures()) {
                 if (!floatFeature.UsedInModel()) {
                     continue;
