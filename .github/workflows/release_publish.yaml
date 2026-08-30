@@ -83,7 +83,7 @@ jobs:
         run: New-Item -Path built_widget -ItemType Directory
 
       - name: Download catboost python package visualization widget
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: catboost-python-package-widget-v${{ inputs.version }}
           path: built_widget/
@@ -91,7 +91,7 @@ jobs:
           repository: ${{ inputs.artifacts_repository }}
           run-id: ${{ inputs.artifacts_run_id }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
@@ -118,7 +118,7 @@ jobs:
 
     steps:
       - name: Download python package dists
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: catboost-python-package-dist-*
           merge-multiple: true
@@ -148,14 +148,14 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: catboost
           ref: v${{ inputs.version }}
           sparse-checkout: catboost/jvm-packages/common
 
       - name: Set up Maven Central Repository
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           java-version: '8'
           distribution: 'temurin'
@@ -187,7 +187,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: catboost
           ref: v${{ inputs.version }}
@@ -197,7 +197,7 @@ jobs:
             catboost/jvm-packages/tools
 
       - name: Set up Maven Central Repository
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           java-version: '8'
           distribution: 'temurin'
@@ -216,7 +216,7 @@ jobs:
           New-Item -Path prebuilt/catboost4j-prediction_resources -ItemType Directory
 
       - name: Download catboost4j-prediction_resources
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: catboost4j-prediction_resources-*
           merge-multiple: true
@@ -252,12 +252,12 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Setup Python 3.12 for running scripts
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: catboost
           ref: v${{ inputs.version }}
@@ -274,7 +274,7 @@ jobs:
           python ./generate_projects/generate.py
 
       - name: Set up Maven Central Repository
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           java-version: '8'
           distribution: 'temurin'
@@ -294,7 +294,7 @@ jobs:
           New-Item -Path prebuilt/spark/catboost4j-spark_core_resources -ItemType Directory
 
       - name: Download catboost4j-spark-impl-sources
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: catboost4j-spark-impl-sources-v${{ inputs.version }}
           path: prebuilt/spark/
@@ -303,7 +303,7 @@ jobs:
           run-id: ${{ inputs.artifacts_run_id }}
 
       - name: Download catboost4j-spark_core_resources
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: catboost4j-spark_core_resources*
           merge-multiple: true
@@ -342,12 +342,12 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Setup Python 3.12 for running scripts
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: catboost
           ref: v${{ inputs.version }}
@@ -364,7 +364,7 @@ jobs:
           New-Item -Path R -ItemType Directory
 
       - name: Download R packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: catboost-R-package-*
           merge-multiple: true
@@ -408,7 +408,7 @@ jobs:
             --release-version ${{ inputs.version }}
 
       - name: Release on GitHub
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           body_path: ${{ github.workspace }}/RELEASE_changelog.md
           files: upload/*
