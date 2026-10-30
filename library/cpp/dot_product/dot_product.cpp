@@ -1,6 +1,7 @@
 #include "dot_product.h"
 #include "dot_product_sse.h"
 #include "dot_product_avx2.h"
+#include "dot_product_avx512.h"
 #include "dot_product_vnni.h"
 #include "dot_product_simple.h"
 
@@ -45,6 +46,21 @@ namespace NDotProductImpl {
                     DotProductI8Impl = &DotProductVnni;
                 } else {
                     DotProductI8Impl = &DotProductAvx2;
+                }
+
+                // The int8 products stay on VNNI/AVX2 above; these are the ones
+                // that gain from the wider registers.
+                if (GetEnv("Y_NO_AVX512_IN_DOT_PRODUCT") == ""
+                    && NX86::HaveAVX512F() && NX86::HaveAVX512BW()
+                    && NX86::HaveAVX512DQ() && NX86::HaveAVX512VL())
+                {
+                    DotProductUi8Impl = &DotProductAvx512;
+                    DotProductI32Impl = &DotProductAvx512;
+                    DotProductFloatImpl = &DotProductAvx512;
+                    DotProductFloatI8Impl = &DotProductFloatI8Avx512;
+                    DotProductDoubleImpl = &DotProductAvx512;
+                    TriWayDotProductImpl = &TriWayDotProductAvx512;
+                    TriWayDotProductFloatI8Impl = &TriWayDotProductFloatI8Avx512;
                 }
             } else {
 #ifdef ARCADIA_SSE

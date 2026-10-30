@@ -66,6 +66,18 @@ target_sources(catboost-libs-model PRIVATE
   ${PROJECT_SOURCE_DIR}/catboost/libs/model/utils.cpp
 )
 
+target_sources_custom(catboost-libs-model
+  .avx512
+  SRCS
+  ${PROJECT_SOURCE_DIR}/catboost/libs/model/cpu/evaluator_impl_avx512.cpp
+  CUSTOM_FLAGS
+  -mavx512f
+  -mavx512cd
+  -mavx512bw
+  -mavx512dq
+  -mavx512vl
+)
+
 
 generate_enum_serilization(catboost-libs-model
   ${PROJECT_SOURCE_DIR}/catboost/libs/model/ctr_provider.h

@@ -46,6 +46,7 @@ target_link_options(model_ut PRIVATE
 
 target_sources(model_ut PRIVATE
   ${PROJECT_SOURCE_DIR}/catboost/libs/model/ut/model_export_helpers_ut.cpp
+  ${PROJECT_SOURCE_DIR}/catboost/libs/model/ut/avx512_evaluator_ut.cpp
   ${PROJECT_SOURCE_DIR}/catboost/libs/model/ut/formula_evaluator_ut.cpp
   ${PROJECT_SOURCE_DIR}/catboost/libs/model/ut/json_model_export_ut.cpp
   ${PROJECT_SOURCE_DIR}/catboost/libs/model/ut/leaf_weights_ut.cpp
