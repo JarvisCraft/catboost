@@ -45,6 +45,9 @@ namespace NCB::NModelEvaluation {
         size_t ObjectsCount = 0;
         size_t BlocksCount = 0;
         size_t BlockStride = 0;
+        // Document count used per block when this data was produced; the last block may be
+        // shorter, but BlockStride is always buckets * BlockSize.
+        size_t BlockSize = FORMULA_EVALUATION_BLOCK_SIZE;
         TMaybeOwningArrayHolder<ui8> QuantizedData;
 
         TCPUEvaluatorQuantizedData ExtractBlock(size_t blockId) const {
@@ -53,9 +56,11 @@ namespace NCB::NModelEvaluation {
             size_t width = QuantizedData.GetSize() / ObjectsCount;
 
             result.ObjectsCount = Min(
-                FORMULA_EVALUATION_BLOCK_SIZE, ObjectsCount - FORMULA_EVALUATION_BLOCK_SIZE * (blockId));
+                BlockSize, ObjectsCount - BlockSize * (blockId));
+            result.BlockSize = BlockSize;
             result.BlockStride = width * result.ObjectsCount;
 
+            // The slice is placed by the stored BlockStride; its length is this block's width.
             result.QuantizedData = QuantizedData.Slice(
                 BlockStride * blockId,
                 result.BlockStride
@@ -426,6 +431,7 @@ namespace NCB::NModelEvaluation {
         cpuEvaluatorQuantizedData->BlocksCount = 0;
         cpuEvaluatorQuantizedData->BlockStride =
             trees.GetEffectiveBinaryFeaturesBucketsCount() * blockSize;
+        cpuEvaluatorQuantizedData->BlockSize = blockSize;
         cpuEvaluatorQuantizedData->ObjectsCount = fullDocCount;
         ui8* resultPtr = result.data();
         std::fill(result.begin(), result.begin() + expectedQuantizedFeaturesLen, 0);
@@ -621,6 +627,7 @@ namespace NCB::NModelEvaluation {
         );
         cpuEvaluatorQuantizedData->BlockStride =
             trees.GetEffectiveBinaryFeaturesBucketsCount() * FORMULA_EVALUATION_BLOCK_SIZE;
+        cpuEvaluatorQuantizedData->BlockSize = FORMULA_EVALUATION_BLOCK_SIZE;
         cpuEvaluatorQuantizedData->BlocksCount = 0;
         cpuEvaluatorQuantizedData->ObjectsCount = end - start;
         for (; start < end; start += FORMULA_EVALUATION_BLOCK_SIZE) {

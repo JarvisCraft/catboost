@@ -45,4 +45,3 @@ CatBoost — Yandex's gradient boosting library. Arcadia-style C++20 core (from 
 - C++ must follow `CPP_STYLE_GUIDE.md` and the (Russian) `catboost_command_style_guide_extension.md`: `T`-prefixed class names, lowercase type suffixes (`ui64`, `i32`, `TString`), verbs-first function names (`GetFeatureCount`, `CountFeatures`), lowercase abbreviations (`TDsvWriter`), anonymous-namespace for classes not declared in a `.h`, one-letter vars only for `for` loop indices, file names with underscores. There is no `.clang-format`; style is enforced by the `cpp_styleguide` build tool.
 - Python follows PEP8; checkers are `tools/black_linter`, `tools/flake8_linter`, `tools/ruff_linter`.
 - Do not bump package versions in PRs — the maintainers version internally (see docs "Versioning conventions").
-- Commits must carry the trailer `Assisted-by: OpenCode <dev@opencode.ai>` when generated with AI assistance.

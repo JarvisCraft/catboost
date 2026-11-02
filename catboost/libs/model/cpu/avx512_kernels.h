@@ -132,6 +132,14 @@ namespace NCB::NModelEvaluation::NAvx512 {
         int curTreeSize)
     {
         switch (curTreeSize) {
+            case 0:
+                // An empty tree (TreeSizes[i] == 0) has a single leaf. With
+                // CurTreeSize == 0 the depth loop does not run, so the
+                // accumulators stay zero and the stores below fill every
+                // document of the block with index 0.
+                CalcIndexesAvx512Depthed<NeedXorMask, BlockCount, 0>(
+                    binFeatures, docCountInBlock, indexesVec, treeSplitsCurPtr);
+                break;
             case 1:
                 CalcIndexesAvx512Depthed<NeedXorMask, BlockCount, 1>(
                     binFeatures, docCountInBlock, indexesVec, treeSplitsCurPtr);
@@ -165,6 +173,9 @@ namespace NCB::NModelEvaluation::NAvx512 {
                     binFeatures, docCountInBlock, indexesVec, treeSplitsCurPtr);
                 break;
             default:
+                // Both call sites guard on 0 <= curTreeSize <= 8, so silently
+                // doing nothing here would only hide a bug.
+                Y_ASSERT(false);
                 break;
         }
     }

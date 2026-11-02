@@ -304,6 +304,12 @@ namespace NCB::NModelEvaluation {
         size_t treeEnd,
         double* __restrict resultsPtr) {
         const ui8* __restrict binFeatures = quantizedData->QuantizedData.data();
+        // CalcIndexesSseDepthed and CalculateLeafValues4 have no scalar epilogue
+        // for SSEBlockCount == 8, so a larger block would silently leave
+        // documents 8 * SSE_BLOCK_SIZE..(docCountInBlock - 1) at index 0.
+        // Anything above that has to be routed to a wider evaluator (or to a
+        // smaller block size); failing here is better than truncating.
+        CB_ENSURE(docCountInBlock <= 8 * SSE_BLOCK_SIZE, "Unexpected number of SSE blocks: " << docCountInBlock);
         switch (docCountInBlock / SSE_BLOCK_SIZE) {
             case 0:
                 CalcTreesBlockedImpl<IsSingleClassModel, NeedXorMask, 0, CalcLeafIndexesOnly>(

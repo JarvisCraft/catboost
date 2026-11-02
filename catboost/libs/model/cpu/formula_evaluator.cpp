@@ -579,9 +579,14 @@ namespace NCB::NModelEvaluation {
                         << " (EffectiveBinaryFeaturesBucketsCount == " << ModelTrees->GetEffectiveBinaryFeaturesBucketsCount() << " )"
                     );
                 }
-                CB_ENSURE(cpuQuantizedFeatures->BlocksCount * FORMULA_EVALUATION_BLOCK_SIZE >= cpuQuantizedFeatures->ObjectsCount);
+                CB_ENSURE(
+                    cpuQuantizedFeatures->BlocksCount * cpuQuantizedFeatures->BlockSize >= cpuQuantizedFeatures->ObjectsCount,
+                    "Unexpected block layout: BlocksCount == " << cpuQuantizedFeatures->BlocksCount
+                    << ", BlockSize == " << cpuQuantizedFeatures->BlockSize
+                    << " (ObjectsCount == " << cpuQuantizedFeatures->ObjectsCount << " )"
+                );
                 std::fill(results.begin(), results.end(), 0.0);
-                auto subBlockSize = Min<size_t>(FORMULA_EVALUATION_BLOCK_SIZE, cpuQuantizedFeatures->ObjectsCount);
+                auto subBlockSize = Min<size_t>(cpuQuantizedFeatures->BlockSize, cpuQuantizedFeatures->ObjectsCount);
                 auto calcFunction = GetCalcTreesFunction(
                     *ModelTrees,
                     subBlockSize,
@@ -623,10 +628,15 @@ namespace NCB::NModelEvaluation {
                         << " (EffectiveBinaryFeaturesBucketsCount == " << ModelTrees->GetEffectiveBinaryFeaturesBucketsCount() << " )"
                     );
                 }
-                CB_ENSURE(cpuQuantizedFeatures->BlocksCount * FORMULA_EVALUATION_BLOCK_SIZE >= cpuQuantizedFeatures->ObjectsCount);
+                CB_ENSURE(
+                    cpuQuantizedFeatures->BlocksCount * cpuQuantizedFeatures->BlockSize >= cpuQuantizedFeatures->ObjectsCount,
+                    "Unexpected block layout: BlocksCount == " << cpuQuantizedFeatures->BlocksCount
+                    << ", BlockSize == " << cpuQuantizedFeatures->BlockSize
+                    << " (ObjectsCount == " << cpuQuantizedFeatures->ObjectsCount << " )"
+                );
                 auto calcFunction = GetCalcTreesFunction(
                     *ModelTrees,
-                    Min<size_t>(FORMULA_EVALUATION_BLOCK_SIZE, cpuQuantizedFeatures->ObjectsCount),
+                    Min<size_t>(cpuQuantizedFeatures->BlockSize, cpuQuantizedFeatures->ObjectsCount),
                     /*calcIndexesOnly*/ true
                 );
                 size_t treeCount = treeEnd - treeStart;

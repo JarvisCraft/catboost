@@ -70,11 +70,8 @@ target_sources_custom(catboost-libs-model
   SRCS
   ${PROJECT_SOURCE_DIR}/catboost/libs/model/cpu/evaluator_impl_avx512.cpp
   CUSTOM_FLAGS
-  -mavx512f
-  -mavx512cd
-  -mavx512bw
-  -mavx512dq
-  -mavx512vl
+  "$<$<CXX_COMPILER_ID:MSVC>:/arch:AVX512>"
+  "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-mavx512f;-mavx512cd;-mavx512bw;-mavx512dq;-mavx512vl>"
 )
 
 

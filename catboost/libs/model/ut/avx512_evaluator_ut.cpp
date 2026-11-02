@@ -10,10 +10,12 @@
 // Cross-checks the batched evaluator against the single-document one over
 // document counts that straddle every block and register boundary it has.
 //
-// On a CPU with AVX-512 the batched path is the AVX-512 evaluator working in
-// blocks of up to 512 documents, while the single-document path is plain scalar
-// code, so the comparison is exactly the AVX-512-versus-baseline check that
-// matters. Elsewhere it still guards the block-size plumbing and the SSE path.
+// The AVX-512 kernels themselves are exercised only when the test runs on a host
+// with AVX-512F/BW/DQ/VL: only then does GetTransposedEvaluationBlockSize()
+// return 512 and GetCalcTreesFunctionAvx512() get a chance to take over. On any
+// other host the block size stays 128 and the AVX-512 dispatcher is never
+// entered, so this file only re-validates the baseline/SSE path and the
+// block-size plumbing. The commit message / PR should note that coverage gap.
 
 using namespace NCB;
 using namespace NCB::NModelEvaluation;
@@ -26,11 +28,10 @@ namespace {
         255, 256, 300, 511, 512, 513, 640, 1000
     };
 
-    TFullModel MakeSyntheticObliviousModel(
+    TFullModel MakeSyntheticObliviousModelWithTreeDepths(
         size_t featureCount,
         size_t borderCount,
-        size_t treeCount,
-        size_t treeDepth,
+        const TVector<int>& treeDepths,
         size_t approxDimension,
         ui64 seed
     ) {
@@ -49,13 +50,14 @@ namespace {
         trees->SetFloatFeatures(floatFeatures);
 
         TVector<double> leafValues;
-        for (size_t treeIndex : xrange(treeCount)) {
-            Y_UNUSED(treeIndex);
+        for (int treeDepth : treeDepths) {
             TVector<int> splits;
-            for (size_t depth : xrange(treeDepth)) {
+            for (int depth : xrange(treeDepth)) {
                 Y_UNUSED(depth);
                 splits.push_back(int(rng.Uniform(featureCount * borderCount)));
             }
+            // An empty tree (treeDepth == 0) draws no splits, so the RNG stream
+            // stays aligned with the trees around it.
             trees->AddBinTree(splits);
             for (size_t leafIndex : xrange((size_t(1) << treeDepth) * approxDimension)) {
                 Y_UNUSED(leafIndex);
@@ -66,6 +68,23 @@ namespace {
         trees->SetApproxDimension(int(approxDimension));
         model.UpdateDynamicData();
         return model;
+    }
+
+    TFullModel MakeSyntheticObliviousModel(
+        size_t featureCount,
+        size_t borderCount,
+        size_t treeCount,
+        size_t treeDepth,
+        size_t approxDimension,
+        ui64 seed
+    ) {
+        return MakeSyntheticObliviousModelWithTreeDepths(
+            featureCount,
+            borderCount,
+            TVector<int>(treeCount, int(treeDepth)),
+            approxDimension,
+            seed
+        );
     }
 
     TVector<TVector<float>> MakeFeatures(size_t docCount, size_t featureCount, ui64 seed) {
@@ -193,5 +212,19 @@ Y_UNIT_TEST_SUITE(TAvx512Evaluator) {
             /*featureCount*/ 24, /*borderCount*/ 8, /*treeCount*/ 9, /*treeDepth*/ 6,
             /*approxDimension*/ 1, /*seed*/ 20260820);
         CheckLeafIndexesOnAllDocCounts(model, 5);
+    }
+
+    // An empty tree (AddBinTree({})) is legal: TreeSizes[i] == 0 and it has a
+    // single leaf, so every document must get leaf index 0. Nine trees put one
+    // empty tree inside a four-tree group (index 2) and one in the
+    // one-tree-at-a-time remainder (index 8), so both AVX-512 loops see
+    // curTreeSize == 0.
+    Y_UNIT_TEST(TestZeroDepthTree) {
+        const TVector<int> treeDepths = {6, 6, 0, 6, 6, 6, 6, 6, 0};
+        const auto model = MakeSyntheticObliviousModelWithTreeDepths(
+            /*featureCount*/ 16, /*borderCount*/ 8, treeDepths,
+            /*approxDimension*/ 1, /*seed*/ 20260821);
+        CheckModelOnAllDocCounts(model, 6);
+        CheckLeafIndexesOnAllDocCounts(model, 7);
     }
 }

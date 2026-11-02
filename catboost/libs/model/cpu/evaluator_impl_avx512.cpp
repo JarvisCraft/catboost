@@ -72,8 +72,9 @@ namespace NCB::NModelEvaluation {
             if (allTreesAreShallow) {
                 const size_t treeEnd4 = treeStart + (((treeEnd - treeStart) | 0x3) ^ 0x3);
                 for (size_t treeId = treeStart; treeId < treeEnd4; treeId += 4) {
-                    // The kernel writes every document of the block, so unlike
-                    // the SSE path there is nothing to zero out first.
+                    // The kernel writes every document of the block for every
+                    // tree size, including the zero-fill case of an empty tree,
+                    // so unlike the SSE path there is nothing to zero out first.
                     for (size_t subTreeId = 0; subTreeId < 4; ++subTreeId) {
                         CalcIndexesAvx512<NeedXorMask, BlockCount>(
                             binFeatures,
