@@ -3,8 +3,62 @@
 
 #include "evaluator.h"
 
+#include <util/string/cast.h>
+#include <util/system/env.h>
+
 namespace NCB::NModelEvaluation {
     namespace NDetail {
+        // Float feature reader for the transposed input layout. Unlike a plain
+        // lambda it also exposes the documents of one feature as a contiguous
+        // range, which is what lets BinarizeFloats() take the AVX-512 path.
+        struct TTransposedFloatFeatureAccessor {
+            TConstArrayRef<TConstArrayRef<float>> TransposedFeatures;
+
+            float operator()(TFeaturePosition floatFeature, size_t index) const {
+                return TransposedFeatures[floatFeature.FlatIndex][index];
+            }
+
+            const float* GetContiguousData(TFeaturePosition floatFeature, size_t start) const {
+                return TransposedFeatures[floatFeature.FlatIndex].data() + start;
+            }
+        };
+
+        // CATBOOST_TRANSPOSED_BLOCK_SIZE caps the block size of the transposed
+        // path, for sweeping it the way the reference paper does. It can only
+        // lower the value the evaluator picked, never raise it past what that
+        // evaluator handles. Read once.
+        inline size_t GetTransposedBlockSizeLimitFromEnv() {
+            static const size_t limit = [] () -> size_t {
+                const TString raw = GetEnv("CATBOOST_TRANSPOSED_BLOCK_SIZE");
+                size_t parsed = 0;
+                if (raw.empty() || !TryFromString(raw, parsed)) {
+                    return 0;
+                }
+                return parsed;
+            }();
+            return limit;
+        }
+
+        // Document block to binarize and evaluate at a time. The transposed
+        // layout reads one feature row after another, so a bigger block means
+        // fewer jumps between distant rows and it keeps getting faster up to the
+        // 512 documents the AVX-512 evaluator is built for. The non-transposed
+        // layout instead reads one cache line per document and peaks at 128, so
+        // it stays where it was.
+        inline size_t GetTransposedEvaluationBlockSize(const TModelTrees& trees) {
+            size_t blockSize = FORMULA_EVALUATION_BLOCK_SIZE;
+#ifdef _x86_64_
+            if (trees.IsOblivious() && HaveAvx512Evaluator()) {
+                blockSize = AVX512_TRANSPOSED_BLOCK_SIZE;
+            }
+#endif
+            Y_UNUSED(trees);
+            if (const size_t limit = GetTransposedBlockSizeLimitFromEnv()) {
+                blockSize = Min(limit, blockSize);
+            }
+            return blockSize;
+        }
+
         template <typename TFloatFeatureAccessor, typename TCatFeatureAccessor,
                   typename TTextFeatureAccessor, typename TEmbeddingFeatureAccessor>
         inline void CalcGeneric(
@@ -22,9 +76,10 @@ namespace NCB::NModelEvaluation {
             size_t treeEnd,
             EPredictionType predictionType,
             TArrayRef<double> results,
-            const NCB::NModelEvaluation::TFeatureLayout* featureInfo = nullptr
+            const NCB::NModelEvaluation::TFeatureLayout* featureInfo = nullptr,
+            size_t maxBlockSize = FORMULA_EVALUATION_BLOCK_SIZE
         ) {
-            const size_t blockSize = Min(FORMULA_EVALUATION_BLOCK_SIZE, docCount);
+            const size_t blockSize = Min(maxBlockSize, docCount);
             auto calcTrees = GetCalcTreesFunction(trees, blockSize);
             if (trees.GetTreeCount() == 0) {
                 auto biasRef = trees.GetScaleAndBias().GetBiasRef();
@@ -167,9 +222,7 @@ namespace NCB::NModelEvaluation {
                     CtrProvider,
                     TextProcessingCollection,
                     EmbeddingProcessingCollection,
-                    [&transposedFeatures](TFeaturePosition floatFeature, size_t index) -> float {
-                        return transposedFeatures[floatFeature.FlatIndex][index];
-                    },
+                    TTransposedFloatFeatureAccessor{transposedFeatures},
                     [&transposedFeatures](TFeaturePosition catFeature, size_t index) -> int {
                         return ConvertFloatCatFeatureToIntHash(transposedFeatures[catFeature.FlatIndex][index]);
                     },
@@ -180,7 +233,8 @@ namespace NCB::NModelEvaluation {
                     treeEnd,
                     PredictionType,
                     results,
-                    featureInfo
+                    featureInfo,
+                    GetTransposedEvaluationBlockSize(*ModelTrees)
                 );
             }
 
@@ -525,9 +579,14 @@ namespace NCB::NModelEvaluation {
                         << " (EffectiveBinaryFeaturesBucketsCount == " << ModelTrees->GetEffectiveBinaryFeaturesBucketsCount() << " )"
                     );
                 }
-                CB_ENSURE(cpuQuantizedFeatures->BlocksCount * FORMULA_EVALUATION_BLOCK_SIZE >= cpuQuantizedFeatures->ObjectsCount);
+                CB_ENSURE(
+                    cpuQuantizedFeatures->BlocksCount * cpuQuantizedFeatures->BlockSize >= cpuQuantizedFeatures->ObjectsCount,
+                    "Unexpected block layout: BlocksCount == " << cpuQuantizedFeatures->BlocksCount
+                    << ", BlockSize == " << cpuQuantizedFeatures->BlockSize
+                    << " (ObjectsCount == " << cpuQuantizedFeatures->ObjectsCount << " )"
+                );
                 std::fill(results.begin(), results.end(), 0.0);
-                auto subBlockSize = Min<size_t>(FORMULA_EVALUATION_BLOCK_SIZE, cpuQuantizedFeatures->ObjectsCount);
+                auto subBlockSize = Min<size_t>(cpuQuantizedFeatures->BlockSize, cpuQuantizedFeatures->ObjectsCount);
                 auto calcFunction = GetCalcTreesFunction(
                     *ModelTrees,
                     subBlockSize,
@@ -569,10 +628,15 @@ namespace NCB::NModelEvaluation {
                         << " (EffectiveBinaryFeaturesBucketsCount == " << ModelTrees->GetEffectiveBinaryFeaturesBucketsCount() << " )"
                     );
                 }
-                CB_ENSURE(cpuQuantizedFeatures->BlocksCount * FORMULA_EVALUATION_BLOCK_SIZE >= cpuQuantizedFeatures->ObjectsCount);
+                CB_ENSURE(
+                    cpuQuantizedFeatures->BlocksCount * cpuQuantizedFeatures->BlockSize >= cpuQuantizedFeatures->ObjectsCount,
+                    "Unexpected block layout: BlocksCount == " << cpuQuantizedFeatures->BlocksCount
+                    << ", BlockSize == " << cpuQuantizedFeatures->BlockSize
+                    << " (ObjectsCount == " << cpuQuantizedFeatures->ObjectsCount << " )"
+                );
                 auto calcFunction = GetCalcTreesFunction(
                     *ModelTrees,
-                    Min<size_t>(FORMULA_EVALUATION_BLOCK_SIZE, cpuQuantizedFeatures->ObjectsCount),
+                    Min<size_t>(cpuQuantizedFeatures->BlockSize, cpuQuantizedFeatures->ObjectsCount),
                     /*calcIndexesOnly*/ true
                 );
                 size_t treeCount = treeEnd - treeStart;

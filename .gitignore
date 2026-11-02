@@ -72,3 +72,8 @@ node_modules/
 catboost/spark/catboost4j-spark/core/src/main/resources/
 catboost/spark/catboost4j-spark/core/target/
 catboost/spark/catboost4j-spark/projects/
+
+# Nix / direnv local artifacts
+.direnv/
+result
+.pre-commit-config.yaml
