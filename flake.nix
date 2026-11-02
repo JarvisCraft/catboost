@@ -19,6 +19,7 @@
       systems = [
         "x86_64-linux"
         "aarch64-linux"
+        "aarch64-darwin"
       ];
       imports = [ inputs.git-hooks.flakeModule ];
       perSystem =
@@ -133,14 +134,16 @@
               # host without AVX-512; its script picks this up.
               export SIMDE_INCLUDE="${pkgs.simde}/include"
             '';
-            packages = with pkgs; [
-              pkg-config
-              gdb
-              valgrind
-              clang
-              clang-tools
-              simde
-            ];
+            packages =
+              with pkgs;
+              [
+                pkg-config
+                gdb
+                clang
+                clang-tools
+                simde
+              ]
+              ++ lib.optional pkgs.stdenv.isLinux pkgs.valgrind;
           };
           # Training the benchmark models needs a released catboost, which the
           # build above deliberately does not provide.
